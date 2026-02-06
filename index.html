@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Additional Service Dispute Assessment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+    <div id="app" class="max-w-5xl mx-auto"></div>
+
+    <script>
+        const state = {
+            answers: {},
+            isComplete: false,
+            servicePrice: '',
+            tax: '',
+            trustSafetyFee: '',
+            contractorPayout: ''
+        };
+
+        const questions = [
+            { id: 1, text: "Did the pro arrive on-site?" },
+            { id: 2, text: "Did they start any work?" },
+            { id: 3, text: "Was any portion of the main quoted work actually performed?" },
+            { id: 4, text: "Was the majority of the agreed scope of work completed?" },
+            { id: 5, text: "Were all parts of the main quoted work completed with no remaining incomplete service?" },
+            { id: 6, text: "Is Haul and Dispose included in the service?" },
+            { id: 6.5, text: "Did the Pro haul away and dispose of the debris?", conditional: true },
+            { id: 7, text: "Was the service completed to the customer's satisfaction?" }
+        ];
+
+        function handleAnswer(questionId, answer) {
+            state.answers[questionId] = answer;
+            const shouldEnd = (answer === 'no' && (questionId === 1 || questionId === 2 || questionId === 3 || questionId === 4 || questionId === 6 || questionId === 6.5)) || questionId === 7;
+            if (shouldEnd) {
+                state.isComplete = true;
+            }
+            render();
+        }
+
+        function handleUndo(questionId) {
+            delete state.answers[questionId];
+            questions.forEach(q => {
+                if (q.id > questionId) {
+                    delete state.answers[q.id];
+                }
+            });
+            state.isComplete = false;
+            render();
+        }
+
+        function resetAssessment() {
+            state.answers = {};
+            state.isComplete = false;
+            state.servicePrice = '';
+            state.tax = '';
+            state.trustSafetyFee = '';
+            state.contractorPayout = '';
+            render();
+        }
+
+        function calculateJobCompletion() {
+            let percentage = 0;
+            const ans = state.answers;
+            
+            if (ans[1] === undefined) return 0;
+            if (ans[1] === 'no') return 0;
+            
+            if (ans[2] === 'yes') {
+                percentage = 20;
+            } else if (ans[2] === 'no') {
+                return 0;
+            }
+            
+            if (ans[3] === 'yes') {
+                percentage = 40;
+            } else if (ans[3] === 'no') {
+                return 20;
+            }
+            
+            if (ans[4] === 'yes') {
+                percentage = 60;
+            } else if (ans[4] === 'no') {
+                return 40;
+            }
+            
+            if (ans[5] === 'yes') {
+                percentage = 80;
+            } else if (ans[5] === 'no') {
+                if (ans[6] === 'yes') {
+                    if (ans[6.5] === 'yes') {
+                        return 80;
+                    } else if (ans[6.5] === 'no') {
+                        return 70;
+                    } else {
+                        return 60;
+                    }
+                } else if (ans[6] === 'no') {
+                    return 80;
+                } else {
+                    return 60;
+                }
+            }
+            
+            if (ans[7] === 'yes') {
+                percentage = 100;
+            }
+            
+            return percentage;
+        }
+
+        function isQuestionActive(questionId) {
+            const ans = state.answers;
+            
+            if (questionId === 1) return true;
+            
+            if (questionId === 2) {
+                if (ans[1] === 'no') return false;
+                return ans[1] === 'yes';
+            }
+            
+            if (questionId === 3) {
+                if (ans[1] === 'no' || ans[2] === 'no') return false;
+                return ans[2] === 'yes';
+            }
+            
+            if (questionId === 4) {
+                if (ans[1] === 'no' || ans[2] === 'no' || ans[3] === 'no') return false;
+                return ans[3] === 'yes';
+            }
+            
+            if (questionId === 5) {
+                if (ans[1] === 'no' || ans[2] === 'no' || ans[3] === 'no' || ans[4] === 'no') return false;
+                return ans[4] === 'yes';
+            }
+            
+            if (questionId === 6) {
+                if (ans[1] === 'no' || ans[2] === 'no' || ans[3] === 'no' || ans[4] === 'no') return false;
+                return ans[5] === 'no';
+            }
+            
+            if (questionId === 6.5) {
+                if (ans[1] === 'no' || ans[2] === 'no' || ans[3] === 'no' || ans[4] === 'no' || ans[6] === 'no') return false;
+                return ans[6] === 'yes';
+            }
+            
+            if (questionId === 7) {
+                if (ans[1] === 'no' || ans[2] === 'no' || ans[3] === 'no' || ans[4] === 'no' || ans[6] === 'no' || ans[6.5] === 'no') return false;
+                if (ans[5] === 'yes') return true;
+                if (ans[6] === 'yes' && ans[6.5] === 'yes') return true;
+                return false;
+            }
+            
+            return false;
+        }
+
+        function parseNumber(value) {
+            const parsed = parseFloat(value);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function render() {
+            const jobCompletion = calculateJobCompletion();
+            const refundPercentage = 100 - jobCompletion;
+            const customerCreditAmount = (parseNumber(state.servicePrice) + parseNumber(state.tax) + parseNumber(state.trustSafetyFee)) * (refundPercentage / 100);
+            const providerDebitAmount = parseNumber(state.contractorPayout) * (refundPercentage / 100);
+
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <h1 class="text-3xl font-bold text-gray-800">
+                        Additional Service Dispute Assessment
+                    </h1>
+                    <button onclick="resetAssessment()" class="px-4 py-2 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700 transition-colors text-sm">
+                        Reset
+                    </button>
+                </div>
+                <p class="text-red-600 mb-6">
+                    This tool is only for additional services when a customer reports partial completion or quality concerns. Use this tool only when clear evidence supports resolving the dispute in favor of the customer. This tool is a guide only and is not meant to be followed strictly. Agents should still use judgment and review all available evidence when deciding the final refund amount. Do not use this tool when evidence does not support that the service was not completed according to quote details.
+                </p>
+                
+                <div class="flex gap-6">
+                    <div class="flex-1 bg-white rounded-lg shadow-lg p-8">
+                        <p class="text-gray-600 mb-8">
+                            Please answer the following questions to assess your dispute.
+                        </p>
+
+                        <div class="space-y-6">
+                            ${questions.map(q => {
+                                const isActive = isQuestionActive(q.id);
+                                const answer = state.answers[q.id];
+                                return `
+                                    <div class="border-b pb-6 last:border-b-0 ${q.id === 6.5 ? 'ml-8 pl-4 border-l-4 border-blue-300' : ''} ${!isActive ? 'opacity-40' : ''}">
+                                        <p class="text-lg font-medium mb-4 ${isActive ? 'text-gray-700' : 'text-gray-400'}">
+                                            ${q.id}. ${q.text}
+                                        </p>
+                                        
+                                        <div class="flex gap-4 items-center justify-between">
+                                            <div class="flex gap-4">
+                                                <button 
+                                                    onclick="handleAnswer(${q.id}, 'yes')"
+                                                    ${!isActive || answer !== undefined ? 'disabled' : ''}
+                                                    class="px-6 py-2 rounded-md font-medium transition-colors ${
+                                                        answer === 'yes'
+                                                            ? 'bg-green-600 text-white'
+                                                            : !isActive || answer !== undefined
+                                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                            : 'bg-green-500 text-white hover:bg-green-600'
+                                                    }">
+                                                    Yes
+                                                </button>
+                                                
+                                                <button 
+                                                    onclick="handleAnswer(${q.id}, 'no')"
+                                                    ${!isActive || answer !== undefined ? 'disabled' : ''}
+                                                    class="px-6 py-2 rounded-md font-medium transition-colors ${
+                                                        answer === 'no'
+                                                            ? 'bg-red-600 text-white'
+                                                            : !isActive || answer !== undefined
+                                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                            : 'bg-red-500 text-white hover:bg-red-600'
+                                                    }">
+                                                    No
+                                                </button>
+                                            </div>
+                                            
+                                            ${answer !== undefined ? `
+                                                <button 
+                                                    onclick="handleUndo(${q.id})"
+                                                    class="px-3 py-1 bg-gray-400 text-white rounded text-xs font-medium hover:bg-gray-500 transition-colors">
+                                                    Undo
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        ${state.isComplete ? `
+                            <div class="mt-8 p-6 bg-blue-50 rounded-lg">
+                                <h2 class="text-xl font-semibold text-gray-800 mb-2">
+                                    Assessment Complete
+                                </h2>
+                                <p class="text-gray-700">
+                                    ${Object.keys(state.answers).some(key => {
+                                        const qId = parseFloat(key);
+                                        return state.answers[qId] === 'no' && (qId === 1 || qId === 2 || qId === 3 || qId === 4 || qId === 6 || qId === 6.5);
+                                    })
+                                        ? "The assessment has been concluded based on your responses."
+                                        : "Thank you for completing all questions."}
+                                </p>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="w-96 bg-white rounded-lg shadow-lg p-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Billing Details</h2>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-8">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Service Price</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2 text-gray-500">$</span>
+                                    <input type="number" value="${state.servicePrice}" oninput="state.servicePrice = this.value; render();" placeholder="0.00" step="0.01" class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tax</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2 text-gray-500">$</span>
+                                    <input type="number" value="${state.tax}" oninput="state.tax = this.value; render();" placeholder="0.00" step="0.01" class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Trust & Safety Fee</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2 text-gray-500">$</span>
+                                    <input type="number" value="${state.trustSafetyFee}" oninput="state.trustSafetyFee = this.value; render();" placeholder="0.00" step="0.01" class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Contractor Payout</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2 text-gray-500">$</span>
+                                    <input type="number" value="${state.contractorPayout}" oninput="state.contractorPayout = this.value; render();" placeholder="0.00" step="0.01" class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800 mb-3">Job Completion</h2>
+                                <div class="bg-indigo-50 border border-indigo-200 rounded-md p-4">
+                                    <div class="flex items-center justify-center mb-2">
+                                        ${state.isComplete ? `
+                                            <span class="text-3xl font-bold text-indigo-600">${jobCompletion}%</span>
+                                        ` : `
+                                            <span class="text-lg text-gray-400">Pending</span>
+                                        `}
+                                    </div>
+                                    ${state.isComplete ? `
+                                        <div class="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
+                                            <div style="width: ${jobCompletion}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-500"></div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800 mb-3">Refund %</h2>
+                                <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                                    <div class="flex items-center justify-center mb-2">
+                                        ${state.isComplete ? `
+                                            <span class="text-3xl font-bold text-red-600">${refundPercentage}%</span>
+                                        ` : `
+                                            <span class="text-lg text-gray-400">Pending</span>
+                                        `}
+                                    </div>
+                                    ${state.isComplete ? `
+                                        <div class="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
+                                            <div style="width: ${refundPercentage}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-red-600 transition-all duration-500"></div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mt-8">
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800 mb-3">Customer Credit Amount</h2>
+                                <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                                    <div class="flex items-center justify-center">
+                                        ${state.isComplete ? `
+                                            <span class="text-2xl font-bold text-green-600">$${customerCreditAmount.toFixed(2)}</span>
+                                        ` : `
+                                            <span class="text-lg text-gray-400">Pending</span>
+                                        `}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800 mb-3">Provider Debit Amount</h2>
+                                <div class="bg-orange-50 border border-orange-200 rounded-md p-4">
+                                    <div class="flex items-center justify-center">
+                                        ${state.isComplete ? `
+                                            <span class="text-2xl font-bold text-orange-600">$${providerDebitAmount.toFixed(2)}</span>
+                                        ` : `
+                                            <span class="text-lg text-gray-400">Pending</span>
+                                        `}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${state.isComplete && refundPercentage === 0 ? `
+                            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                                <p class="text-center text-blue-700 font-medium">
+                                    Awesome! All quoted work was completed.
+                                </p>
+                            </div>
+                        ` : ''}
+
+                        ${state.isComplete && jobCompletion > 0 && jobCompletion < 100 ? `
+                            <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                                <p class="text-center text-yellow-700 font-medium">
+                                    Partial Refund: Please manually credit the customer and manually debit the Pro.
+                                </p>
+                            </div>
+                        ` : ''}
+
+                        ${state.isComplete && jobCompletion === 0 ? `
+                            <div class="mt-6 p-4 bg-red-50 border border-red-200 rounded-md">
+                                <p class="text-center text-red-700 font-medium">
+                                    Full Refund: Please use the "Credit/Pull Payout" in Admin.
+                                </p>
+                            </div>
+                        ` : ''}
+
+                        ${state.isComplete && customerCreditAmount > 75 ? `
+                            <div class="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
+                                <p class="text-center text-purple-700 font-medium">
+                                    Customer credit amount is over $75. Please reach out to the Escalations team for approval.
+                                </p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        render();
+    </script>
+</body>
+</html>
