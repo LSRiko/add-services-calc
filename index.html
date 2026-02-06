@@ -464,7 +464,12 @@
             
             state.showError = false;
             state.answers[questionId] = answer;
-            const shouldEnd = (answer === 'no' && (questionId === 1 || questionId === 2 || questionId === 3 || questionId === 4 || questionId === 6 || questionId === 6.5)) || questionId === 7;
+            
+            // Check if assessment should end
+            const shouldEnd = (answer === 'no' && (questionId === 1 || questionId === 2 || questionId === 3 || questionId === 4 || questionId === 6 || questionId === 6.5)) || 
+                              questionId === 7 ||
+                              (questionId === 6.5 && state.answers[5] === 'no'); // End after 6.5 if question 5 was "no"
+            
             if (shouldEnd) {
                 state.isComplete = true;
             }
@@ -591,7 +596,7 @@
             }
             
             if (questionId === 7) {
-                if (ans[1] === 'no' || ans[2] === 'no' || ans[3] === 'no' || ans[4] === 'no' || ans[6] === 'no' || ans[6.5] === 'no') return false;
+                if (ans[1] === 'no' || ans[2] === 'no' || ans[3] === 'no' || ans[4] === 'no' || ans[5] === 'no' || ans[6] === 'no' || ans[6.5] === 'no') return false;
                 if (ans[5] === 'yes') return true;
                 if (ans[6] === 'yes' && ans[6.5] === 'yes') return true;
                 return false;
