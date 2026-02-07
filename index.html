@@ -1,320 +1,477 @@
-import React, { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
-
-export default function ServiceCompletionGuide() {
-  const [selectedOption, setSelectedOption] = useState(null);
-  const [servicePrice, setServicePrice] = useState('');
-  const [tax, setTax] = useState('');
-  const [trustSafetyFee, setTrustSafetyFee] = useState('');
-  const [contractorPayout, setContractorPayout] = useState('');
-  const [showError, setShowError] = useState(false);
-
-  const options = [
-    { text: "Pro did not arrive (No-Show) or arrived but completed no work.", completion: 0 },
-    { text: "Pro started work but did very little.", completion: 20 },
-    { text: "Pro completed some main work; large portion incomplete.", completion: 40 },
-    { text: "Pro completed most work; some unfinished.", completion: 60 },
-    { text: "Pro completed quoted work but did not remove debris.", completion: 70 },
-    { text: "Pro completed most work; poor quality or small areas missed.", completion: 80 },
-    { text: "Pro completed all quoted work to customer satisfaction.", completion: 100 }
-  ];
-
-  const handleOptionClick = (index) => {
-    if (selectedOption === null) {
-      // Check if Service Price and Contractor Payout are filled
-      if (!servicePrice.trim() || !contractorPayout.trim()) {
-        setShowError(true);
-        return;
-      }
-      setShowError(false);
-      setSelectedOption(index);
-    }
-  };
-
-  const handleUndo = (e) => {
-    e.stopPropagation();
-    setSelectedOption(null);
-  };
-
-  const handleReset = () => {
-    setSelectedOption(null);
-    setServicePrice('');
-    setTax('');
-    setTrustSafetyFee('');
-    setContractorPayout('');
-    setShowError(false);
-  };
-
-  const parseAmount = (value) => {
-    const num = parseFloat(value.replace(/[^0-9.-]/g, ''));
-    return isNaN(num) ? 0 : num;
-  };
-
-  const formatCurrency = (value) => {
-    if (!value) return '';
-    const num = parseAmount(value);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(num);
-  };
-
-  const handleCurrencyInput = (value, setter) => {
-    // Allow typing numbers and decimal points
-    const cleanValue = value.replace(/[^0-9.]/g, '');
-    setter(cleanValue);
-  };
-
-  const handleCurrencyBlur = (value, setter) => {
-    if (value) {
-      setter(formatCurrency(value));
-    }
-  };
-
-  const handleCurrencyFocus = (value, setter) => {
-    // Remove formatting when focused for easier editing
-    if (value) {
-      const cleanValue = value.replace(/[^0-9.]/g, '');
-      setter(cleanValue);
-    }
-  };
-
-  const calculateCustomerCredit = () => {
-    if (selectedOption === null) return 0;
-    const total = parseAmount(servicePrice) + parseAmount(tax) + parseAmount(trustSafetyFee);
-    const refundPercent = (100 - options[selectedOption].completion) / 100;
-    return (total * refundPercent).toFixed(2);
-  };
-
-  const calculateProviderDebit = () => {
-    if (selectedOption === null) return 0;
-    const payout = parseAmount(contractorPayout);
-    const refundPercent = (100 - options[selectedOption].completion) / 100;
-    return (payout * refundPercent).toFixed(2);
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">
-            Additional Service Completion Guide
-          </h1>
-          
-          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
-            <p className="text-sm text-red-700 leading-relaxed">
-              <strong>NOTE:</strong> This tool applies to additional service disputes involving partial completion or quality issues reported within 5 days of service completion. Always offer Fix or Return Request first. If the customer does not want the Pro to return, or is still not satisfied after the fix, this tool can be used as a guide.
-            </p>
-            <p className="text-sm text-red-700 leading-relaxed mt-3">
-              Use only when clear evidence supports resolving in favor of the customer. This tool is for guidance only and should not be followed strictly. Agents should still review all evidence before deciding the final refund amount. Do not use if evidence does not support that the service was not completed based on quote details. If you need further assistance on how to resolve the dispute, please reach out to Escalations.
-            </p>
-          </div>
-
-          <div className="flex justify-end mb-6">
-            <button
-              onClick={handleReset}
-              className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-colors shadow-md"
-            >
-              Reset
-            </button>
-          </div>
-          
-          <p className="text-gray-600 mb-8">
-            Please select the option that best describes the service completion status.
-          </p>
-
-          {showError && (
-            <div className="mb-6 p-4 bg-red-100 border-2 border-red-400 rounded-lg">
-              <p className="text-red-700 font-semibold">
-                ⚠️ Please fill out the Billing Details before selecting an option.
-              </p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Additional Service Dispute Assessment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+            padding: 40px;
+        }
+        .title-section {
+            margin-bottom: 30px;
+        }
+        .description-box {
+            background: #fef2f2;
+            border: 2px solid #dc2626;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #dc2626;
+            line-height: 1.6;
+        }
+        .description-box strong {
+            font-weight: 600;
+        }
+        .reset-btn {
+            background: #dc2626;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        .reset-btn:hover {
+            background: #b91c1c;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+        }
+        .left-column {
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #333;
+            margin-bottom: 20px;
+            margin-top: 20px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #dc2626;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        .error-message.show {
+            display: block;
+        }
+        .billing-section {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        .billing-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+        }
+        .billing-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-label {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .input-field {
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .result-box {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .result-box.completion {
+            border-color: #3b82f6;
+        }
+        .result-box.refund {
+            border-color: #f59e0b;
+        }
+        .result-box.credit {
+            border-color: #8b5cf6;
+        }
+        .result-box.debit {
+            border-color: #ec4899;
+        }
+        .result-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .result-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .result-value.completion-value {
+            color: #3b82f6;
+        }
+        .result-value.refund-value {
+            color: #f59e0b;
+        }
+        .result-value.credit-value {
+            color: #8b5cf6;
+        }
+        .result-value.debit-value {
+            color: #ec4899;
+        }
+        .result-value.pending {
+            color: #9ca3af;
+            font-size: 24px;
+        }
+        .option {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .option:hover:not(.disabled) {
+            border-color: #10b981;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+        .option.selected {
+            background: #d1fae5;
+            border-color: #10b981;
+            color: #047857;
+        }
+        .option.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .option-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .note {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .undo-btn {
+            background: #6b7280;
+            border: 1px solid #4b5563;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 12px;
+            transition: all 0.2s ease;
+        }
+        .undo-btn:hover {
+            background: #4b5563;
+            border-color: #374151;
+        }
+        .message-box {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #1e40af;
+            font-weight: 500;
+            display: none;
+        }
+        .message-box.show {
+            display: block;
+        }
+        .reminder-box {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #92400e;
+            font-weight: 500;
+            display: none;
+        }
+        .reminder-box.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title-section">
+            <h1>Additional Service Dispute Assessment</h1>
+            <div class="description-box">
+                <strong>NOTE:</strong> This tool applies to additional service disputes involving partial completion or quality issues reported within 5 days of service completion. Always offer Fix or Return Request first. If the customer does not want the Pro to return, or is still not satisfied after the fix, this tool can be used as a guide.
+                <br><br>
+                Use only when clear evidence supports resolving in favor of the customer. This tool is for guidance only and should not be followed strictly. Agents should still review all evidence before deciding the final refund amount. Do not use if evidence does not support that the service was not completed based on quote details. If you need further assistance on how to resolve the dispute, please reach out to Escalations.
             </div>
-          )}
-
-          <div className="flex gap-8">
-            {/* Left Column - Options */}
-            <div className="flex-1 space-y-3">
-              {options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleOptionClick(index)}
-                  disabled={selectedOption !== null && selectedOption !== index}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all duration-200 ${
-                    selectedOption === index
-                      ? 'border-green-500 bg-green-50 shadow-md'
-                      : selectedOption !== null
-                      ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-                      : 'border-gray-300 bg-white hover:border-indigo-400 hover:bg-indigo-50 cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 pr-4">
-                      <span>{option.text}</span>
-                      {index === 4 && (
-                        <div className="text-red-600 text-sm mt-2">
-                          NOTE: If you choose this option, make sure "Haul and dispose the debris" is included in the quote details.
-                        </div>
-                      )}
-                    </div>
-                    {selectedOption === index && (
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <CheckCircle2 className="w-6 h-6 text-green-600" />
-                        <button
-                          onClick={handleUndo}
-                          className="px-3 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors text-sm font-medium text-gray-700"
-                        >
-                          Undo
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Right Column - Billing Details, Job Completion and Refund Boxes */}
-            <div className="w-96 space-y-6">
-              <div className="bg-gray-50 border-4 border-gray-400 rounded-lg p-6 shadow-lg">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Billing Details</h3>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Service Price
-                      </label>
-                      <input
-                        type="text"
-                        value={servicePrice}
-                        onChange={(e) => handleCurrencyInput(e.target.value, setServicePrice)}
-                        onBlur={(e) => handleCurrencyBlur(e.target.value, setServicePrice)}
-                        onFocus={(e) => handleCurrencyFocus(e.target.value, setServicePrice)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="$0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tax
-                      </label>
-                      <input
-                        type="text"
-                        value={tax}
-                        onChange={(e) => handleCurrencyInput(e.target.value, setTax)}
-                        onBlur={(e) => handleCurrencyBlur(e.target.value, setTax)}
-                        onFocus={(e) => handleCurrencyFocus(e.target.value, setTax)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="$0.00"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Trust & Safety Fee
-                      </label>
-                      <input
-                        type="text"
-                        value={trustSafetyFee}
-                        onChange={(e) => handleCurrencyInput(e.target.value, setTrustSafetyFee)}
-                        onBlur={(e) => handleCurrencyBlur(e.target.value, setTrustSafetyFee)}
-                        onFocus={(e) => handleCurrencyFocus(e.target.value, setTrustSafetyFee)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="$0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Contractor Payout
-                      </label>
-                      <input
-                        type="text"
-                        value={contractorPayout}
-                        onChange={(e) => handleCurrencyInput(e.target.value, setContractorPayout)}
-                        onBlur={(e) => handleCurrencyBlur(e.target.value, setContractorPayout)}
-                        onFocus={(e) => handleCurrencyFocus(e.target.value, setContractorPayout)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="$0.00"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-indigo-50 border-4 border-indigo-400 rounded-lg p-6 text-center shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Job Completion %</h3>
-                  <div className="text-4xl font-bold text-indigo-600">
-                    {selectedOption !== null ? (
-                      `${options[selectedOption].completion}%`
-                    ) : (
-                      <span className="text-2xl text-gray-500">Pending</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-red-50 border-4 border-red-400 rounded-lg p-6 text-center shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Refund %</h3>
-                  <div className="text-4xl font-bold text-red-600">
-                    {selectedOption !== null ? (
-                      `${100 - options[selectedOption].completion}%`
-                    ) : (
-                      <span className="text-2xl text-gray-500">Pending</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-green-50 border-4 border-green-400 rounded-lg p-6 text-center shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Customer Credit Amount</h3>
-                  <div className="text-3xl font-bold text-green-600">
-                    ${calculateCustomerCredit()}
-                  </div>
-                </div>
-
-                <div className="bg-orange-50 border-4 border-orange-400 rounded-lg p-6 text-center shadow-lg">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Provider Debit Amount</h3>
-                  <div className="text-3xl font-bold text-orange-600">
-                    ${calculateProviderDebit()}
-                  </div>
-                </div>
-              </div>
-
-              {selectedOption !== null && (
-                <div className="mt-6 space-y-4">
-                  {parseFloat(calculateCustomerCredit()) > 75 && (
-                    <div className="p-4 bg-purple-100 border-2 border-purple-400 rounded-lg">
-                      <p className="text-purple-800 font-semibold text-center">
-                        ⚠️ Reminder: Customer credit amount is over $75. Please reach out to Escalations for approval.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {options[selectedOption].completion === 100 ? (
-                    <div className="p-4 bg-green-100 border-2 border-green-400 rounded-lg">
-                      <p className="text-green-800 font-semibold text-center">
-                        🎉 Awesome! All quoted work was completed.
-                      </p>
-                    </div>
-                  ) : (100 - options[selectedOption].completion) === 100 ? (
-                    <div className="p-4 bg-blue-100 border-2 border-blue-400 rounded-lg">
-                      <p className="text-blue-800 font-semibold text-center">
-                        Full Refund: Please use "Credit/Pull Payout" button in Admin.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
-                      <p className="text-yellow-800 font-semibold text-center">
-                        Partial Refund: Please manually credit the Customer and manually debit the Pro.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
-      </div>
+        <div class="content-grid">
+            <div class="left-column">
+                <button class="reset-btn" onclick="resetAll()">Reset All</button>
+                <div class="error-message" id="errorMessage">Please fill out the Billing Details before selecting an option.</div>
+                <div class="billing-section">
+                    <div class="billing-title">Billing Details</div>
+                    <div class="billing-grid">
+                        <div class="input-group">
+                            <label class="input-label">Service Price</label>
+                            <input type="text" class="input-field" id="servicePrice" placeholder="$0.00" onblur="formatCurrency(this)">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Tax</label>
+                            <input type="text" class="input-field" id="tax" placeholder="$0.00" onblur="formatCurrency(this)">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Trust & Safety Fee</label>
+                            <input type="text" class="input-field" id="safetyFee" placeholder="$0.00" onblur="formatCurrency(this)">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Contractor Payout</label>
+                            <input type="text" class="input-field" id="contractorPayout" placeholder="$0.00" onblur="formatCurrency(this)">
+                        </div>
+                    </div>
+                </div>
+                <p class="subtitle">Please select the option that best describes the work completion level</p>
+                <div class="option" onclick="selectOption(1)">
+                    <div class="option-title">Pro did not arrive (No-Show) or arrived but completed no work</div>
+                    <button class="undo-btn" onclick="event.stopPropagation(); undoSelection()" style="display: none;">Undo</button>
+                </div>
+                <div class="option" onclick="selectOption(2)">
+                    <div class="option-title">Pro started work but did very little</div>
+                    <button class="undo-btn" onclick="event.stopPropagation(); undoSelection()" style="display: none;">Undo</button>
+                </div>
+                <div class="option" onclick="selectOption(3)">
+                    <div class="option-title">Pro completed some main work; large portion incomplete</div>
+                    <button class="undo-btn" onclick="event.stopPropagation(); undoSelection()" style="display: none;">Undo</button>
+                </div>
+                <div class="option" onclick="selectOption(4)">
+                    <div class="option-title">Pro completed most work; some unfinished</div>
+                    <button class="undo-btn" onclick="event.stopPropagation(); undoSelection()" style="display: none;">Undo</button>
+                </div>
+                <div class="option" onclick="selectOption(5)">
+                    <div class="option-title">Pro completed quoted work but did not remove debris</div>
+                    <div class="note">NOTE: If you choose this option, make sure "Haul and dispose the debris" is included in the quote details.</div>
+                    <button class="undo-btn" onclick="event.stopPropagation(); undoSelection()" style="display: none;">Undo</button>
+                </div>
+                <div class="option" onclick="selectOption(6)">
+                    <div class="option-title">Pro completed most work; poor quality or small areas missed</div>
+                    <button class="undo-btn" onclick="event.stopPropagation(); undoSelection()" style="display: none;">Undo</button>
+                </div>
+                <div class="option" onclick="selectOption(7)">
+                    <div class="option-title">Pro completed all quoted work to customer satisfaction</div>
+                    <button class="undo-btn" onclick="event.stopPropagation(); undoSelection()" style="display: none;">Undo</button>
+                </div>
+            </div>
+            <div class="right-column">
+                <div class="result-box completion">
+                    <div class="result-label">Job Completion %</div>
+                    <div class="result-value completion-value pending" id="completionPercent">Pending</div>
+                </div>
+                <div class="result-box refund">
+                    <div class="result-label">Refund %</div>
+                    <div class="result-value refund-value pending" id="refundPercent">Pending</div>
+                </div>
+                <div class="result-box credit">
+                    <div class="result-label">Customer Credit Amount</div>
+                    <div class="result-value credit-value pending" id="customerCredit">Pending</div>
+                </div>
+                <div class="result-box debit">
+                    <div class="result-label">Provider Debit Amount</div>
+                    <div class="result-value debit-value pending" id="providerDebit">Pending</div>
+                </div>
+                <div class="message-box" id="messageBox"></div>
+                <div class="reminder-box" id="reminderBox"></div>
+            </div>
+        </div>
     </div>
-  );
-}
+    <script>
+        var selectedOption = null;
+        var completionPercentages = {1: 0, 2: 20, 3: 40, 4: 60, 5: 70, 6: 80, 7: 100};
+        
+        function formatCurrency(input) {
+            var val = input.value.replace(/[^0-9.]/g, '');
+            if (!val) { input.value = ''; return; }
+            var num = parseFloat(val);
+            if (isNaN(num)) { input.value = ''; return; }
+            input.value = '$' + num.toFixed(2);
+        }
+        
+        function updateResults(optionNumber) {
+            var cp = document.getElementById('completionPercent');
+            var rp = document.getElementById('refundPercent');
+            var cc = document.getElementById('customerCredit');
+            var pd = document.getElementById('providerDebit');
+            var mb = document.getElementById('messageBox');
+            var rb = document.getElementById('reminderBox');
+            
+            if (optionNumber !== null) {
+                var completion = completionPercentages[optionNumber];
+                var refund = 100 - completion;
+                cp.textContent = completion + '%';
+                cp.classList.remove('pending');
+                rp.textContent = refund + '%';
+                rp.classList.remove('pending');
+                
+                var sp = parseFloat(document.getElementById('servicePrice').value.replace(/[^0-9.]/g, '')) || 0;
+                var tx = parseFloat(document.getElementById('tax').value.replace(/[^0-9.]/g, '')) || 0;
+                var sf = parseFloat(document.getElementById('safetyFee').value.replace(/[^0-9.]/g, '')) || 0;
+                var cop = parseFloat(document.getElementById('contractorPayout').value.replace(/[^0-9.]/g, '')) || 0;
+                
+                var creditAmt = (sp + tx + sf) * (refund / 100);
+                var debitAmt = cop * (refund / 100);
+                
+                cc.textContent = '$' + creditAmt.toFixed(2);
+                cc.classList.remove('pending');
+                pd.textContent = '$' + debitAmt.toFixed(2);
+                pd.classList.remove('pending');
+                
+                mb.classList.remove('show');
+                rb.classList.remove('show');
+                
+                if (completion === 0) {
+                    mb.textContent = '💰 Full Refund: Please use "Credit/Pull Payout" button in Admin.';
+                    mb.classList.add('show');
+                } else if (completion === 100) {
+                    mb.textContent = '🎉 Awesome! The job was completed to the customer\'s satisfaction!';
+                    mb.classList.add('show');
+                } else if (refund < 100 && refund > 0) {
+                    mb.textContent = '⚙️ Partial Refund: Please manually credit the Customer and manually debit the Pro.';
+                    mb.classList.add('show');
+                }
+                
+                if (creditAmt > 75) {
+                    rb.textContent = '⚠️ Reminder: Customer credit amount is over $75. Please reach out to Escalations for approval.';
+                    rb.classList.add('show');
+                }
+            } else {
+                cp.textContent = 'Pending';
+                cp.classList.add('pending');
+                rp.textContent = 'Pending';
+                rp.classList.add('pending');
+                cc.textContent = 'Pending';
+                cc.classList.add('pending');
+                pd.textContent = 'Pending';
+                pd.classList.add('pending');
+                mb.classList.remove('show');
+                rb.classList.remove('show');
+            }
+        }
+        
+        function selectOption(optionNumber) {
+            var sp = document.getElementById('servicePrice');
+            var cop = document.getElementById('contractorPayout');
+            var em = document.getElementById('errorMessage');
+            
+            if (!sp.value.trim() || !cop.value.trim()) {
+                em.classList.add('show');
+                setTimeout(function() { em.classList.remove('show'); }, 5000);
+                return;
+            }
+            
+            em.classList.remove('show');
+            var options = document.querySelectorAll('.option');
+            if (selectedOption === optionNumber) { return; }
+            if (selectedOption !== null) { undoSelection(); }
+            selectedOption = optionNumber;
+            
+            options.forEach(function(option, index) {
+                var undoBtn = option.querySelector('.undo-btn');
+                if (index + 1 === optionNumber) {
+                    option.classList.add('selected');
+                    option.classList.remove('disabled');
+                    undoBtn.style.display = 'block';
+                } else {
+                    option.classList.add('disabled');
+                    option.classList.remove('selected');
+                    undoBtn.style.display = 'none';
+                }
+            });
+            updateResults(optionNumber);
+        }
+        
+        function undoSelection() {
+            var options = document.querySelectorAll('.option');
+            selectedOption = null;
+            options.forEach(function(option) {
+                option.classList.remove('selected', 'disabled');
+                var undoBtn = option.querySelector('.undo-btn');
+                undoBtn.style.display = 'none';
+            });
+            updateResults(null);
+        }
+        
+        function resetAll() {
+            var inputs = document.querySelectorAll('.input-field');
+            inputs.forEach(function(input) { input.value = ''; });
+            undoSelection();
+        }
+    </script>
+</body>
+</html>
